@@ -1,0 +1,50 @@
+clear;
+filename = 'mosaicfloor';
+extended1 = '.png';
+extended2 = '.jpg';
+f = im2double(imread(strcat(filename,extended2)));
+epsi = 0.05;
+alfa =0.5;
+lambda = 10;
+[m,n,z] = size(f);
+bx=zeros(m,n,z);
+by=zeros(m,n,z);
+tx=zeros(m,n,z);
+ty=zeros(m,n,z);
+lx=zeros(m,n,z);
+ly=zeros(m,n,z);
+id = [2:m,m];
+iu = [1,1:m-1];
+ir = [2:n,n];
+il = [1,1:n-1];
+Lap = zeros(m,n);
+Lap([end,1,2],[end,1,2]) = [0,1,0;1,-4,1;0,1,0];
+Lap = repmat(Lap,[1,1,z]);
+I =  zeros(m,n);
+I([end,1,2],[end,1,2]) = [0,0,0;0,1,0;0,0,0];
+I = repmat(I,[1,1,z]);
+denominatorfft = fft2(I)-lambda*fft2(Lap);
+u = f;
+tic;
+
+ for i =1:10
+    temp1=bx-tx+lx;
+    temp2=by-ty+ly;
+    divtemp1 = temp1 - temp1(:,il,:);
+    divtemp2 = temp2 - temp2(iu,:,:);
+    divtemp = divtemp1 + divtemp2;
+    numerator = fft2(f) - lambda * fft2(divtemp);
+    u = real(ifft2(numerator./denominatorfft));
+    dx = (u(:,ir,:) - u) + tx - lx;
+    dy = (u(id,:,:) - u) + ty - ly; 
+    [dxnew,dynew] = shrink2(dx,dy,alfa/lambda);
+    tx = dx - dxnew;
+    ty = dy - dynew;
+    bx = dxnew;
+    by = dynew;   
+    lx = tx - bx + u(:,ir,:) - u;
+    ly = ty - by + u(id,:,:) - u;
+    lx(abs(tx - bx + u(:,ir,:) - u)<sqrt(alfa*epsi/lambda))=0;
+    ly(abs(ty - by + u(id,:,:) - u)<sqrt(alfa*epsi/lambda))=0;   
+ end
+ imshow(u)
